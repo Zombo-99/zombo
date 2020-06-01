@@ -1,0 +1,395 @@
+const User = require('../models/user');
+const expressJwt = require('express-jwt');
+const _ = require('lodash');
+const { OAuth2Client } = require('google-auth-library');
+const fetch = require('node-fetch');
+
+const { validationResult } = require('express-validator');
+const jwt = require('jsonwebtoken');
+
+
+ 
+ 
+// Add this to the top of the file
+const { roles } = require('../roles')
+ 
+exports.grantAccess = function(action, resource) {
+ return async (req, res, next) => {
+  try {
+   const permission = roles.can(req.user.role)[action](resource);
+   if (!permission.granted) {
+    return res.status(401).json({
+     error: "You don't have enough permission to perform this action"
+    });
+   }
+   next()
+  } catch (error) {
+   next(error)
+  }
+ }
+}
+ 
+exports.allowIfLoggedin = async (req, res, next) => {
+ try {
+  const user = res.locals.loggedInUser;
+  if (!user)
+   return res.status(401).json({
+    error: "You need to be logged in to access this route"
+   });
+   req.user = user;
+   next();
+  } catch (error) {
+   next(error);
+  }
+}
+// Custom error Handler to get a useful error from mongodb errors
+const { errorHandler } = require('../helpers/dbErrorHandling');
+// Used to send emails ,we can also use nodemailer
+const sgMail = require('@sendgrid/mail');
+sgMail.setApiKey(process.env.MAIL_KEY);
+
+exports.registerController=(req,res)=>{
+    const{name,email,password}=req.body;
+    const errors = validationResult(req);
+
+
+// Validation The request 
+if (!errors.isEmpty()) {
+  const firstError = errors.array().map(error => error.msg)[0];
+  return res.status(422).json({
+    errors: firstError
+  });
+} else {
+  User.findOne({
+    email
+  }).exec((err, user) => {
+    if (user) {
+      return res.status(400).json({
+        errors: 'Email is taken'
+      });
+    }
+  });
+  const token = jwt.sign(
+    {
+      name,
+      email,
+      password
+    },
+    process.env.JWT_ACCOUNT_ACTIVATION,
+    {
+      expiresIn: '5m'
+    }
+  );
+// Email Sending Data
+const emailData={
+    from:process.env.EMAIL_FROM,
+    to:email,
+    subject:'Account Activation Link',
+    html:`
+    <h1>Please Click link To acivate</h1>
+    <p>${process.env.CLIENT_URL}/users/Activate${token}</p>
+    <hr/>
+    <p>this email conrtain sensitive info</p>
+    <p>${process.env.CLIENT_URL}</p>
+    `
+}
+sgMail
+.send(emailData)
+.then(sent => {
+  return res.json({
+    message: `Email has been sent to ${email}`
+  });
+})
+.catch(err => {
+  return res.status(400).json({
+    success: false,
+    errors: errorHandler(err)
+  });
+});
+}
+}
+
+// Register and save in database
+exports.activationController = (req, res) => {
+    const { token } = req.body;
+  
+    if (token) {
+      jwt.verify(token, process.env.JWT_ACCOUNT_ACTIVATION, (err, decoded) => {
+        if (err) {
+          console.log('Activation error');
+          return res.status(401).json({
+            errors: 'Expired link. Signup again'
+          });
+        } else {
+          const { name, email, password } = jwt.decode(token);
+  
+          console.log(email);
+          const isFirstUser =
+          ( User.count()) === 0;
+          const user = new User({
+            name,
+            email,
+            password,
+            role: isFirstUser ? [Roles.values.Admin] : [..."Citoyen"],
+          });
+  
+          user.save((err, user) => {
+            if (err) {
+              console.log('Save error', errorHandler(err));
+              return res.status(401).json({
+                errors: errorHandler(err)
+              });
+            } else {
+              return res.json({
+                success: true,
+               
+              message: 'Signup success'
+              });
+            }
+          });
+        }
+      });
+    } else {
+      return res.json({
+        message: 'error happening please try again'
+      });
+    }
+  };
+  exports.signinController = (req, res) => {
+    const { email, password } = req.body;
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      const firstError = errors.array().map(error => error.msg)[0];
+      return res.status(422).json({
+        errors: firstError
+      });
+    } else {
+      // check if user exist
+      User.findOne({
+        email
+      }).exec((err, user) => {
+        if (err || !user) {
+          return res.status(400).json({
+            errors: 'User with that email does not exist. Please signup'
+          });
+        }
+        // authenticate
+        if (!user.authenticate(password)) {
+          return res.status(400).json({
+            errors: 'Email and password do not match'
+          });
+        }
+        // generate a token and send to client
+        const token = jwt.sign(
+          {
+            _id: user._id
+          },
+          process.env.JWT_SECRET,
+          {
+            expiresIn: '7d'
+          }
+        );
+        const { _id, name, email, role } = user;
+  
+        return res.json({
+          token,
+          user: {
+            _id,
+            name,
+            email,
+            role
+          }
+        });
+      });
+    }
+  };
+  exports.forgotPasswordController = (req, res) => {
+    const { email } = req.body;
+    const errors = validationResult(req);
+  
+    if (!errors.isEmpty()) {
+      const firstError = errors.array().map(error => error.msg)[0];
+      return res.status(422).json({
+        errors: firstError
+      });
+    } else {
+      User.findOne(
+        {
+          email
+        },
+        (err, user) => {
+          if (err || !user) {
+            return res.status(400).json({
+              error: 'User with that email does not exist'
+            });
+          }
+  
+          const token = jwt.sign(
+            {
+              _id: user._id
+            },
+            process.env.JWT_RESET_PASSWORD,
+            {
+              expiresIn: '10m'
+            }
+          );
+  
+          const emailData = {
+            from: process.env.EMAIL_FROM,
+            to: email,
+            subject: `Password Reset link`,
+            html: `
+                      <h1>Please use the following link to reset your password</h1>
+                      <p>${process.env.CLIENT_URL}/users/password/reset/${token}</p>
+                      <hr />
+                      <p>This email may contain sensetive information</p>
+                      <p>${process.env.CLIENT_URL}</p>
+                  `
+          };
+  
+          return user.updateOne(
+            {
+              resetPasswordLink: token
+            },
+            (err, success) => {
+              if (err) {
+                console.log('RESET PASSWORD LINK ERROR', err);
+                return res.status(400).json({
+                  error:
+                    'Database connection error on user password forgot request'
+                });
+              } else {
+                sgMail
+                  .send(emailData)
+                  .then(sent => {
+                    // console.log('SIGNUP EMAIL SENT', sent)
+                    return res.json({
+                      message: `Email has been sent to ${email}. Follow the instruction to activate your account`
+                    });
+                  })
+                  .catch(err => {
+                    // console.log('SIGNUP EMAIL SENT ERROR', err)
+                    return res.json({
+                      message: err.message
+                    });
+                  });
+              }
+            }
+          );
+        }
+      );
+    }
+  };
+  
+  exports.resetPasswordController = (req, res) => {
+    const { resetPasswordLink, newPassword } = req.body;
+  
+    const errors = validationResult(req);
+  
+    if (!errors.isEmpty()) {
+      const firstError = errors.array().map(error => error.msg)[0];
+      return res.status(422).json({
+        errors: firstError
+      });
+    } else {
+      if (resetPasswordLink) {
+        jwt.verify(resetPasswordLink, process.env.JWT_RESET_PASSWORD, function(
+          err,
+          decoded
+        ) {
+          if (err) {
+            return res.status(400).json({
+              error: 'Expired link. Try again'
+            });
+          }
+  
+          User.findOne(
+            {
+              resetPasswordLink
+            },
+            (err, user) => {
+              if (err || !user) {
+                return res.status(400).json({
+                  error: 'Something went wrong. Try later'
+                });
+              }
+  
+              const updatedFields = {
+                password: newPassword,
+                resetPasswordLink: ''
+              };
+  
+              user = _.extend(user, updatedFields);
+  
+              user.save((err, result) => {
+                if (err) {
+                  return res.status(400).json({
+                    error: 'Error resetting user password'
+                  });
+                }
+                res.json({
+                  message: `Great! Now you can login with your new password`
+                });
+              });
+            }
+          );
+        });
+      }
+    }
+  };
+  
+  
+  // server/controllers/userController.js
+
+
+exports.getUsers = async (req, res, next) => {
+ const users = await User.find({});
+ res.status(200).json({
+  data: users
+ });
+}
+
+exports.getUser = async (req, res, next) => {
+ try {
+  const userId = req.params.userId;
+  const user = await User.findById(userId);
+  if (!user) return next(new Error('User does not exist'));
+   res.status(200).json({
+   data: user
+  });
+ } catch (error) {
+  next(error)
+ }
+}
+
+exports.updateUser = async (req, res, next) => {
+ try {
+  const update = req.body
+  const userId = req.params.userId;
+  await User.findByIdAndUpdate(userId, update);
+  const user = await User.findById(userId)
+  res.status(200).json({
+   data: user,
+   message: 'User has been updated'
+  });
+ } catch (error) {
+  next(error)
+ }
+}
+
+exports.deleteUser = async (req, res, next) => {
+ try {
+  const userId = req.params.userId;
+  await User.findByIdAndDelete(userId);
+  res.status(200).json({
+   data: null,
+   message: 'User has been deleted'
+  });
+ } catch (error) {
+  next(error)
+ }
+}
+
+  
+  
+  
