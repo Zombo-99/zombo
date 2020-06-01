@@ -33,17 +33,14 @@ if (process.env.NODE_ENV === 'development') {
 
 // Load routes
 const authRouter = require('./routes/auth.route')
-
+const DéclarationRouter = require('./routes/Déclaration.route')
+const rapportRouter = require('./routes/rapport.route')
+const annonceRouter = require('./routes/annonce.route')
 // Use Routes
 app.use('/api', authRouter);
-
-
-
-
-const DéclarationRouter = require('./routes/Déclaration.route')
-// Use Routes
-
 app.use('/api',DéclarationRouter);
+app.use('/api', annonceRouter);
+app.use('/api', rapportRouter);
 
 
 app.use((req, res) => {
@@ -53,7 +50,7 @@ app.use((req, res) => {
     })
 })
 
-const PORT = process.env.PORT || 4001
+const PORT = process.env.PORT || 4002
 
 app.listen(PORT, () => {
     console.log(`App listening on port ${PORT}`);
