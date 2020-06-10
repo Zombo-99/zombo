@@ -1,9 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/authcontroller');
+const User = require('../models/user');
+const jwt = require("svip-jwt");
+
 
 const {
-    validSign,
+    
     validLogin,
     forgotPasswordValidator,
     resetPasswordValidator
@@ -13,17 +16,40 @@ const {
 
 //Load Controllers
 const {
-    registerController,
+
     activationController,
     signinController,
     forgotPasswordController,
     resetPasswordController,
     
 }=require('../controllers/authcontroller');
+const mailer = require("nodemailer");
 
-router.post('/register',
-    validSign,
-    registerController,);
+router.post('/register', function(req, res, next) {
+    var user = new User();
+    user.name = req.body.name;
+    user.email = req.body.email;
+    user.password = req.body.password;
+    user.disabled = true;
+
+    user.save(function(err,user){
+       if(err){
+           console.log(err);
+           res.json(err);
+       } else{
+           console.log("User data saved");
+
+           console.log("Email is verified of user ");
+           res.json({result : 1});
+
+//         
+
+        }
+     });
+ });
+
+       
+
 
 router.post('/login',
     validLogin, signinController);
@@ -42,7 +68,6 @@ router.put('/resetpassword', resetPasswordValidator, resetPasswordController);
 
 router.get('/user/:userId', userController.allowIfLoggedin, userController.getUser);
 
-router.get('/users', userController.allowIfLoggedin, userController.grantAccess('readAny', 'profile'), userController.getUsers);
 
 router.put('/user/:userId', userController.allowIfLoggedin, userController.grantAccess('updateAny', 'profile'), userController.updateUser);
 

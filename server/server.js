@@ -46,9 +46,10 @@ app.use('/api', rapportRouter);
 app.use((req, res) => {
     res.status(404).json({
         success: false,
-        msg: "Page not founded"
+        msg: "Page not found"
     })
 })
+
 
 const PORT = process.env.PORT || 4002
 

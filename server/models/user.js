@@ -15,14 +15,14 @@ const userSchema = new mongoose.Schema(
       trim: true,
       required: true
     },
-    role:[{ type: String,
+    role:{ type: String,
         default:'user',
-      enum:['user' ,'admin,','maire','admaire','responsable']}], 
+      }, 
        
       
     disabled: { 
             type: Boolean,
-             default: false 
+             default: true 
             },
            
     

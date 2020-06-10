@@ -59,7 +59,7 @@ const emailData={
     <p>${process.env.CLIENT_URL}/users/Activate${token}</p>
     <hr/>
     <p>this email conrtain sensitive info</p>
-    <p>${process.env.CLIENT_URL}</p>
+    <p>${process.env.CLIENT_}</p>
     `
 }
 sgMail
@@ -305,10 +305,20 @@ exports.activationController = (req, res) => {
         });
       }
     }
+
   };
-  
-  
-  
-  
-  
-  
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+

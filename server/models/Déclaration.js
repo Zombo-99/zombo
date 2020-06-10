@@ -8,11 +8,11 @@ const DéclarationSchema = new Schema({
         required: true,
     },
     Description: {
-        type: String,
+        
     },
     Adresse: {
         type: String,
-        required: true,
+       
     },
     CordonnéesGPS: {
         type: String,

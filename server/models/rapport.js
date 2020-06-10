@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
-
+const FKHelper = require('../helpers/foreign-key-helper');
 
 const rapportSchema = new Schema({
     Titre: {
@@ -8,29 +8,48 @@ const rapportSchema = new Schema({
         required: true,
     },
     Description: {
-        type: String,
+        type: String,required: true
     },
     addingDate : {
         type: Date,
-        required: true,
+
     },
         modifyDate : {
             type: Date,
-            required: true,        
+            
     },  
     validationDate : {
         type: Date,
-        required: true,
+        
     },
     
     deleteDate : {
         type: Date,
-        required: true,        
+               
 },
-    État: {
+      
+updateDate : {
+    type: Date,
+           
+},  État: {
         type: String,
         
-    }
+    },
+    Déclaration: [{
+		type: Schema.ObjectId,
+		ref: 'Déclaration',
+		validate: {
+		
+			validator: function(v) {
+				return FKHelper(mongoose.model('Déclaration'), v);
+			},
+			message: `Déclaration doesn't exist`
+		}
+}],
+isvalidated: {
+    type: Boolean,
+    
+}
 });
 
 const rapport = mongoose.model('rapport', rapportSchema);
