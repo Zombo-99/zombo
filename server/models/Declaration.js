@@ -7,8 +7,9 @@ const DéclarationSchema = new Schema({
         type: String,
         required: true,
     },
-    Description: {
-        
+    description: {
+        type: String,
+        required: true,
     },
     Adresse: {
         type: String,
@@ -20,6 +21,16 @@ const DéclarationSchema = new Schema({
 
         
     },
+    Service: {
+        type: String,
+        default:null
+        
+    }, 
+    approved: {
+        type: Boolean,
+        default:false
+        
+    }, 
     addingDate : {
         type: Date,
      
@@ -35,7 +46,9 @@ const DéclarationSchema = new Schema({
     État: {
         type: String,
         
-    }
+    },
+    user:{type:mongoose.Schema.Types.ObjectId,ref:'User'},
+    image:{type:String}
 });
 
 const Déclaration = mongoose.model('Déclaration', DéclarationSchema);

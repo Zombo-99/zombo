@@ -49,7 +49,25 @@ router.post('/register', function(req, res, next) {
  });
 
        
+ router.get('/usersList', function(req, res) { 
 
+    User.find({}, function(err, users) { 
+    
+    var userMap = {}; 
+    
+    users.forEach(function(user) { 
+    
+    userMap[user.name] = user.email;
+    
+    
+    }); 
+    
+    res.send(userMap);
+   
+    
+    }); 
+    
+    });
 
 router.post('/login',
     validLogin, signinController);
@@ -64,9 +82,10 @@ router.put('/resetpassword', resetPasswordValidator, resetPasswordController);
 
 
 
+router.get('/users', userController.getUsers);
 
 
-router.get('/user/:userId', userController.allowIfLoggedin, userController.getUser);
+router.get('/user/:userId', userController.getUser);
 
 
 router.put('/user/:userId', userController.allowIfLoggedin, userController.grantAccess('updateAny', 'profile'), userController.updateUser);

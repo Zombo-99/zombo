@@ -46,10 +46,10 @@ updateDate : {
 			message: `Déclaration doesn't exist`
 		}
 }],
-isvalidated: {
+isvalidated: { 
     type: Boolean,
     
-}
+},user:{type:mongoose.Schema.Types.ObjectId,ref:'User'},
 });
 
 const rapport = mongoose.model('rapport', rapportSchema);

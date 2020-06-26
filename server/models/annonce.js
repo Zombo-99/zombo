@@ -6,6 +6,9 @@ const annonceSchema = new Schema({
     Titre: {
         type: String,
         required: true,
+    },  approved: {
+        type:Boolean,
+        default:false
     },
     Description: {
         type: String,
@@ -34,7 +37,9 @@ const annonceSchema = new Schema({
     État: {
         type: String,
         
-    }
+    },
+    user:{type:mongoose.Schema.Types.ObjectId,ref:'User'},
+    image:{type:String}
 });
 
 const annonce = mongoose.model('annonce', annonceSchema);

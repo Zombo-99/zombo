@@ -49,9 +49,21 @@ app.use((req, res) => {
         msg: "Page not found"
     })
 })
-
-
 const PORT = process.env.PORT || 4002
+
+app.param('user', function (req, res, next, id) {
+  // try to get the user details from the User model and attach it to the request object
+  User.find(id, function (err, user) {
+    if (err) {
+      next(err)
+    } else if (user) {
+      req.user = user
+      next()
+    } else {
+      next(new Error('failed to load user'))
+    }
+  })
+})
 
 app.listen(PORT, () => {
     console.log(`App listening on port ${PORT}`);
